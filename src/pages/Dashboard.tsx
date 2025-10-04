@@ -1,0 +1,129 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { LogOut, Calendar, FileText, Settings } from "lucide-react";
+import logo from "@/assets/mapa-logo.png";
+import TimeEntryCalendar from "@/components/dashboard/TimeEntryCalendar";
+import MonthlyStats from "@/components/dashboard/MonthlyStats";
+
+const Dashboard = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        if (!session?.user) {
+          navigate("/auth");
+        }
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (!session?.user) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (error: any) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success("Sessão terminada");
+      navigate("/auth");
+    } catch (error: any) {
+      toast.error("Erro ao terminar sessão");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">A carregar...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <img src={logo} alt="Mapa Apressado" className="h-12 w-auto" />
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Sistema de Ponto</h1>
+                <p className="text-sm text-muted-foreground">
+                  Bem-vindo, {profile?.full_name}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={handleSignOut} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid gap-6 md:grid-cols-[1fr_350px]">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">
+                  Registo de Ponto
+                </h2>
+                <p className="text-muted-foreground">
+                  Registe as suas horas de trabalho diárias
+                </p>
+              </div>
+            </div>
+            <TimeEntryCalendar userId={user?.id || ""} />
+          </div>
+
+          <div className="space-y-6">
+            <MonthlyStats userId={user?.id || ""} />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default Dashboard;
