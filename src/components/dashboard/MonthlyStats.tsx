@@ -54,12 +54,12 @@ const MonthlyStats = ({ userId }: MonthlyStatsProps) => {
     <div className="space-y-4">
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarIcon className="h-4 w-4" />
             Resumo Mensal
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {format(currentMonth, "MMMM 'de' yyyy", { locale: pt })}
+          <p className="text-2xl font-bold text-foreground capitalize">
+            {format(currentMonth, "MMMM yyyy", { locale: pt })}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
