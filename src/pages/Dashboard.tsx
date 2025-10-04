@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { LogOut, Calendar, FileText, Settings } from "lucide-react";
+import { LogOut, Calendar, FileText } from "lucide-react";
 import logo from "@/assets/mapa-logo.png";
 import TimeEntryCalendar from "@/components/dashboard/TimeEntryCalendar";
 import MonthlyStats from "@/components/dashboard/MonthlyStats";
+import MonthlyTimesheet from "@/components/dashboard/MonthlyTimesheet";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -102,25 +104,46 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid gap-6 md:grid-cols-[1fr_350px]">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">
-                  Registo de Ponto
-                </h2>
-                <p className="text-muted-foreground">
-                  Registe as suas horas de trabalho diárias
-                </p>
+        <Tabs defaultValue="calendar" className="space-y-6">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+            <TabsTrigger value="calendar" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Calendário
+            </TabsTrigger>
+            <TabsTrigger value="timesheet" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Folha de Ponto
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="calendar" className="space-y-0">
+            <div className="grid gap-6 md:grid-cols-[1fr_350px]">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">
+                      Registo de Ponto
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Registe as suas horas de trabalho diárias
+                    </p>
+                  </div>
+                </div>
+                <TimeEntryCalendar userId={user?.id || ""} />
+              </div>
+
+              <div className="space-y-6">
+                <MonthlyStats userId={user?.id || ""} />
               </div>
             </div>
-            <TimeEntryCalendar userId={user?.id || ""} />
-          </div>
+          </TabsContent>
 
-          <div className="space-y-6">
-            <MonthlyStats userId={user?.id || ""} />
-          </div>
-        </div>
+          <TabsContent value="timesheet" className="space-y-0">
+            <div className="max-w-5xl mx-auto">
+              <MonthlyTimesheet userId={user?.id || ""} currentMonth={new Date()} />
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

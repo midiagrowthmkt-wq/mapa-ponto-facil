@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, isToday, isFuture } from "date-fns";
 import { pt } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -86,6 +86,18 @@ const TimeEntryDialog = ({ open, onOpenChange, date, userId, onSaved }: TimeEntr
   };
 
   const handleSave = async () => {
+    // Verificar se a data não é futura
+    if (isFuture(date)) {
+      toast.error("Não pode registar dias futuros");
+      return;
+    }
+
+    // Verificar se a data não é hoje (apenas pode registar no dia)
+    if (!isToday(date)) {
+      toast.error("Só pode registar o ponto no dia atual");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -138,13 +150,18 @@ const TimeEntryDialog = ({ open, onOpenChange, date, userId, onSaved }: TimeEntr
     }
   };
 
+  const canEdit = isToday(date);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            Registo de Ponto - {format(date, "d 'de' MMMM 'de' yyyy", { locale: pt })}
+            {canEdit ? "Registo de Ponto" : "Visualizar Registo"} - {format(date, "d 'de' MMMM 'de' yyyy", { locale: pt })}
           </DialogTitle>
+          <DialogDescription>
+            {canEdit ? "Registe as suas horas de trabalho" : "Apenas pode editar registos do dia atual"}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -156,6 +173,7 @@ const TimeEntryDialog = ({ open, onOpenChange, date, userId, onSaved }: TimeEntr
                 type="time"
                 value={entryTime}
                 onChange={(e) => setEntryTime(e.target.value)}
+                disabled={!canEdit}
               />
             </div>
             <div className="space-y-2">
@@ -165,6 +183,7 @@ const TimeEntryDialog = ({ open, onOpenChange, date, userId, onSaved }: TimeEntr
                 type="time"
                 value={exitTime}
                 onChange={(e) => setExitTime(e.target.value)}
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -177,6 +196,7 @@ const TimeEntryDialog = ({ open, onOpenChange, date, userId, onSaved }: TimeEntr
                 type="time"
                 value={lunchExitTime}
                 onChange={(e) => setLunchExitTime(e.target.value)}
+                disabled={!canEdit}
               />
             </div>
             <div className="space-y-2">
@@ -186,6 +206,7 @@ const TimeEntryDialog = ({ open, onOpenChange, date, userId, onSaved }: TimeEntr
                 type="time"
                 value={lunchReturnTime}
                 onChange={(e) => setLunchReturnTime(e.target.value)}
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -209,17 +230,20 @@ const TimeEntryDialog = ({ open, onOpenChange, date, userId, onSaved }: TimeEntr
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              disabled={!canEdit}
             />
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {canEdit ? "Cancelar" : "Fechar"}
           </Button>
-          <Button onClick={handleSave} disabled={loading}>
-            {loading ? "A guardar..." : "Guardar"}
-          </Button>
+          {canEdit && (
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? "A guardar..." : "Guardar"}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
