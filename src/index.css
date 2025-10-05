@@ -111,3 +111,13 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide Lovable badge */
+[data-lovable-badge],
+a[href*="lovable.dev"][target="_blank"],
+a[href*="Edit in Lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
