@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { pt } from "date-fns/locale";
-import { FileText, Clock, TrendingUp, Calendar as CalendarIcon } from "lucide-react";
+import { FileText, Clock, TrendingUp, Calendar as CalendarIcon, Send } from "lucide-react";
+import { toast } from "sonner";
 
 interface MonthlyStatsProps {
   userId: string;
@@ -17,10 +18,28 @@ const MonthlyStats = ({ userId }: MonthlyStatsProps) => {
     totalOvertime: 0,
     daysWorked: 0,
   });
+  const [sending, setSending] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     fetchMonthlyStats();
+    fetchUserProfile();
   }, [userId, currentMonth]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (error) throw error;
+      setUserProfile(data);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
 
   const fetchMonthlyStats = async () => {
     const start = startOfMonth(currentMonth);
@@ -47,6 +66,80 @@ const MonthlyStats = ({ userId }: MonthlyStatsProps) => {
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
+    }
+  };
+
+  const handleSendTimesheet = async () => {
+    try {
+      setSending(true);
+
+      // Get user email
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        toast.error("Email do utilizador não encontrado");
+        return;
+      }
+
+      // Check if timesheet already exists for this month
+      let timesheetId: string;
+      const { data: existingTimesheet } = await supabase
+        .from("timesheets")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("month", currentMonth.getMonth() + 1)
+        .eq("year", currentMonth.getFullYear())
+        .maybeSingle();
+
+      if (existingTimesheet) {
+        timesheetId = existingTimesheet.id;
+        // Update existing timesheet
+        await supabase
+          .from("timesheets")
+          .update({
+            total_hours: stats.totalHours,
+            total_overtime: stats.totalOvertime,
+          })
+          .eq("id", timesheetId);
+      } else {
+        // Create new timesheet
+        const { data: newTimesheet, error: insertError } = await supabase
+          .from("timesheets")
+          .insert({
+            user_id: userId,
+            month: currentMonth.getMonth() + 1,
+            year: currentMonth.getFullYear(),
+            total_hours: stats.totalHours,
+            total_overtime: stats.totalOvertime,
+            status: "draft",
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        timesheetId = newTimesheet.id;
+      }
+
+      // Send email via edge function
+      const { error: emailError } = await supabase.functions.invoke("send-timesheet-email", {
+        body: {
+          timesheetId,
+          userEmail: user.email,
+          userName: userProfile?.full_name || user.email,
+          month: currentMonth.getMonth() + 1,
+          year: currentMonth.getFullYear(),
+          totalHours: stats.totalHours,
+          totalOvertime: stats.totalOvertime,
+        },
+      });
+
+      if (emailError) throw emailError;
+
+      toast.success("Folha de ponto enviada com sucesso!");
+    } catch (error: any) {
+      console.error("Error sending timesheet:", error);
+      toast.error("Erro ao enviar folha de ponto: " + error.message);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -95,9 +188,14 @@ const MonthlyStats = ({ userId }: MonthlyStatsProps) => {
             </div>
           </div>
 
-          <Button className="w-full gap-2" variant="default">
-            <FileText className="h-4 w-4" />
-            Gerar Folha de Ponto PDF
+          <Button 
+            className="w-full gap-2" 
+            variant="default"
+            onClick={handleSendTimesheet}
+            disabled={sending || stats.daysWorked === 0}
+          >
+            <Send className="h-4 w-4" />
+            {sending ? "A enviar..." : "Enviar para Empresa"}
           </Button>
         </CardContent>
       </Card>

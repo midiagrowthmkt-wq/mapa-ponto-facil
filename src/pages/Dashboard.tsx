@@ -5,7 +5,7 @@ import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { LogOut, Calendar, FileText } from "lucide-react";
+import { LogOut, Calendar, FileText, Shield } from "lucide-react";
 import logo from "@/assets/mapa-logo.png";
 import TimeEntryCalendar from "@/components/dashboard/TimeEntryCalendar";
 import MonthlyStats from "@/components/dashboard/MonthlyStats";
@@ -15,6 +15,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,6 +54,16 @@ const Dashboard = () => {
 
       if (error) throw error;
       setProfile(data);
+
+      // Check if user is admin
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user?.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      setIsAdmin(!!roleData);
     } catch (error: any) {
       console.error("Error fetching profile:", error);
     } finally {
@@ -95,10 +106,18 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut} className="gap-2">
-              <LogOut className="h-4 w-4" />
-              Sair
-            </Button>
+            <div className="flex gap-2">
+              {isAdmin && (
+                <Button variant="outline" onClick={() => navigate("/admin")} className="gap-2">
+                  <Shield className="h-4 w-4" />
+                  Admin
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSignOut} className="gap-2">
+                <LogOut className="h-4 w-4" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </header>

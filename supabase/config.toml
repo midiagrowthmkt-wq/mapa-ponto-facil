@@ -1,1 +1,4 @@
 project_id = "dxxfbyprptyyejzxlfco"
+
+[functions.send-timesheet-email]
+verify_jwt = true
